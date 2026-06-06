@@ -28,9 +28,17 @@ utm_epsg: 32651
 # AW3D 範囲の外側に加えるバッファ幅 [メートル]
 # UTM（メートル単位）で正確に計算されます
 # MELITDEM 90m の場合、最低 270m（3ピクセル分）推奨
-buffer_m: 540
-blend_width_m: 540   # フェザリング幅（省略時は buffer_m × 40% = 200m）
-nodata: -9999
+# tile_size_mを省略してmax_file_gbだけ指定
+resolution_m:  2
+max_file_gb:   10.0    # デフォルト1GB
+
+# または手動指定（こちらが優先）
+tile_size_m:   
+
+buffer_m:      500
+blend_width_m: 200
+nodata:        -9999
+
 
 # リサンプリング手法: nearest / bilinear / cubic / lanczos
 resampling: cubic
