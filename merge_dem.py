@@ -313,27 +313,29 @@ def step35_feather_blend(patch_path, mel_1m_path, aw3d_utm_path,
     patch_valid = patch_data != nodata
     mel_valid   = mel_data   != nodata
 
-    # ── 符号付き距離で weight を計算 ──
-    # dist_in : AW3D 内側ピクセルから境界までの距離（内側のみ正）
-    # dist_out: バッファ側ピクセルから境界までの距離（外側のみ正）
-    dist_in  = distance_transform_edt( aw3d_mask)   # 内側: 境界まで +距離
-    dist_out = distance_transform_edt(~aw3d_mask)   # 外側: 境界まで +距離
+    # ── バッファ側のみ weight を計算（AW3D本体は変えない）──
+    #
+    #   AW3D本体         境界          バッファ(MELITDEM)
+    #   ████████████████  │  ░░▒▒▓▓████████
+    #   weight=1.0(固定)  │  0→blend_px で 1.0→0.0
+    #
+    dist_out = distance_transform_edt(~aw3d_mask)  # 外側: 境界まで +距離
 
-    # 符号付き距離: 内側=正、外側=負
-    signed_dist = dist_in - dist_out
-
-    # blend_px 幅で 0→1 に線形変化（境界で 0.5）
-    weight = np.clip((signed_dist + blend_px) / (2.0 * blend_px), 0.0, 1.0).astype("float32")
+    weight = np.where(
+        aw3d_mask,
+        1.0,                                      # AW3D本体: 常に1.0（変更なし）
+        np.clip(dist_out / blend_px, 0.0, 1.0),  # バッファ帯: 境界0.0→遠方1.0
+    ).astype("float32")
 
     # ── ブレンド計算 ──
     both_valid = patch_valid & mel_valid
     blended    = patch_data.copy()
 
-    # ブレンドゾーン: 両データ有効 かつ weight が 0〜1 の間（境界両側 blend_px 以内）
-    blend_zone = both_valid & (signed_dist > -blend_px) & (signed_dist < blend_px)
+    # ブレンドゾーン: バッファ帯 かつ 両データ有効 かつ blend_px 以内
+    blend_zone = both_valid & ~aw3d_mask & (dist_out < blend_px)
 
     blended[blend_zone] = (
-        weight[blend_zone]          * patch_data[blend_zone]
+        weight[blend_zone]           * patch_data[blend_zone]
         + (1.0 - weight[blend_zone]) * mel_data[blend_zone]
     )
     blended[~patch_valid] = nodata
@@ -347,7 +349,7 @@ def step35_feather_blend(patch_path, mel_1m_path, aw3d_utm_path,
 
     n_blend = int(blend_zone.sum())
     pct     = 100.0 * n_blend / max(1, int(patch_valid.sum()))
-    print(f"  ok: feather blend  width={blend_width_m}m ({blend_px}px) on each side")
+    print(f"  ok: feather blend  width={blend_width_m}m ({blend_px}px) buffer-side only")
     print(f"      blended pixels : {n_blend:,} ({pct:.1f}% of valid patch area)")
     print(f"      AW3D core      : rows {row0}:{row1}, cols {col0}:{col1}")
     info(out_path, "patch_1m (blended)")
