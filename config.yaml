@@ -1,44 +1,30 @@
-# ============================================================
-# merge_dem.py 設定ファイル
-# ============================================================
-# 使い方: python merge_dem.py config.yaml
-# ============================================================
+# config.yaml (設定ファイル)
 
-# --- 必須項目 ------------------------------------------------
+# 入力ファイルのパス
+melitdem: "data/s10e105_dem_utmv5.tif"
+aw3d: "data/1mtest/jakarta_1m_corrected.tif"
 
-melitdem: ./data/n05e125_dem.tif
-aw3d:     ./data/1mtest/n05e120_dem_1m.tif
-output:   ./output/test   # → _patch_1m.tif / _melitdem_hole.tif が生成される
+# 出力先のフォルダ名
+output: "output"
 
-# --- UTM 設定 ------------------------------------------------
+# フェザリング設定
+buffer_m: 270.0
+blend_width_m: 270.0
+resolution_m: 2.0
+nodata: -9999.0
+resampling: "bilinear"
 
-# UTM の EPSG コード（省略すると MELITDEM の中心経度から自動判定）
-#
-# 日本でよく使うゾーン:
-#   EPSG:32651  UTM Zone 51N  120°E〜126°E
-#   EPSG:32652  UTM Zone 52N  126°E〜132°E
-#   EPSG:32653  UTM Zone 53N  132°E〜138°E  ← 兵庫・大阪・京都など
-#   EPSG:32654  UTM Zone 54N  138°E〜144°E  ← 東京・名古屋など
-#
-# 高砂市（134.8°E）→ Zone 53N → EPSG:32653
-utm_epsg: 32651
+# ----------------------------------------------------
+# 出力ファイルサイズ（タイル分割と圧縮）の調整
+# ----------------------------------------------------
 
-# --- オプション項目 ------------------------------------------
+# ▼ 圧縮方式の指定（deflate, lzw, zstd, None）
+# 'deflate' または 'lzw' を指定すると、画質を劣化させずにファイル容量を数分の一に圧縮できます。
+compress: "deflate"
 
-# AW3D 範囲の外側に加えるバッファ幅 [メートル]
-# UTM（メートル単位）で正確に計算されます
-# MELITDEM 90m の場合、最低 270m（3ピクセル分）推奨
-# tile_size_mを省略してmax_file_gbだけ指定
-resolution_m:  2
-max_file_gb:   10.0    # デフォルト1GB
+# ▼ サイズ調整 A：1辺の距離(メートル)で固定分割したい場合
+#tile_size_m: 1000.0
 
-# または手動指定（こちらが優先）
-tile_size_m:   
-
-buffer_m:      500
-blend_width_m: 200
-nodata:        -9999
-
-
-# リサンプリング手法: nearest / bilinear / cubic / lanczos
-resampling: cubic
+# ▼ サイズ調整 B：1ファイルの「容量上限(GB)」で自動分割したい場合
+# ※ 調整Bを使う場合は、上の tile_size_m の行を # でコメントアウトするか削除してください。
+max_file_gb: 1  # 1ファイルあたり最大500MB程度になるようにタイルサイズを自動計算
